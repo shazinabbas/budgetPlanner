@@ -156,7 +156,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.values(mockCategories).map(category => (
+                      {Object.values(categories || mockCategories).map(category => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
