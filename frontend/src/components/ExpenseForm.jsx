@@ -12,7 +12,7 @@ import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import { mockCategories, mockPaymentMethods } from '../utils/mockData';
 
-const ExpenseForm = ({ onBack, onSave }) => {
+const ExpenseForm = ({ onBack, onSave, categories }) => {
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
