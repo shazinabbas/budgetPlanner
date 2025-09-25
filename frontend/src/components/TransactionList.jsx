@@ -11,7 +11,7 @@ import BulkActions from './BulkActions';
 import CSVImport from './CSVImport';
 import { useToast } from '../hooks/use-toast';
 
-const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImport, onCategoriesUpdate }) => {
+const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImport, onCategoriesUpdate, categories, onBack }) => {
   const [selectedTransactions, setSelectedTransactions] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
