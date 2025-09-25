@@ -5,7 +5,7 @@ import { Checkbox } from './ui/checkbox';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Search, Filter, Trash2, ArrowUpDown } from 'lucide-react';
+import { Search, Filter, Trash2, ArrowUpDown, ArrowLeft } from 'lucide-react';
 import { mockCategories, mockPaymentMethods } from '../utils/mockData';
 import BulkActions from './BulkActions';
 import CSVImport from './CSVImport';
