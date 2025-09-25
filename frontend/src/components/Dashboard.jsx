@@ -7,7 +7,7 @@ import { Progress } from './ui/progress';
 import { Plus, TrendingUp, TrendingDown, Wallet, Target, PieChart } from 'lucide-react';
 import { mockExpenses, mockIncomeData, mockBudgetLimits, mockCategories } from '../utils/mockData';
 
-const Dashboard = ({ onAddExpense, onAddIncome, onViewReports }) => {
+const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransactions, expenses, categories }) => {
   const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState(null);
   const [budgetData, setBudgetData] = useState({});
