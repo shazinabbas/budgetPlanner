@@ -185,12 +185,12 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {expenses.slice(0, 5).map(expense => (
+              {(expenses.length > 0 ? expenses : mockExpenses).slice(0, 5).map(expense => (
                 <div key={expense.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                   <div className="flex flex-col">
                     <span className="font-medium text-slate-800">{expense.description}</span>
                     <span className="text-sm text-slate-600 capitalize">
-                      {mockCategories[expense.category]?.name} • {expense.subcategory}
+                      {(categories || mockCategories)[expense.category]?.name} • {expense.subcategory.replace('_', ' ')}
                     </span>
                   </div>
                   <div className="text-right">
@@ -204,13 +204,22 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
                 </div>
               ))}
             </div>
-            <Button 
-              variant="outline" 
-              className="w-full mt-4"
-              onClick={onViewReports}
-            >
-              View All Transactions
-            </Button>
+            <div className="flex gap-2 mt-4">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={onViewReports}
+              >
+                View Reports
+              </Button>
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={onViewTransactions}
+              >
+                Manage Transactions
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
