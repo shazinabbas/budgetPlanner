@@ -6,20 +6,34 @@ import { useToast } from "./hooks/use-toast";
 import Dashboard from "./components/Dashboard";
 import ExpenseForm from "./components/ExpenseForm";
 import Reports from "./components/Reports";
+import TransactionList from "./components/TransactionList";
+import { mockCategories } from "./utils/mockData";
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
   const [expenses, setExpenses] = useState([]);
+  const [categories, setCategories] = useState(mockCategories);
   const { toast } = useToast();
 
   // Load expenses from localStorage on app start
   useEffect(() => {
     const savedExpenses = localStorage.getItem('budgetPlannerExpenses');
+    const savedCategories = localStorage.getItem('budgetPlannerCategories');
+    
     if (savedExpenses) {
       try {
         setExpenses(JSON.parse(savedExpenses));
       } catch (error) {
         console.error('Error loading expenses from localStorage:', error);
+      }
+    }
+    
+    if (savedCategories) {
+      try {
+        setCategories(JSON.parse(savedCategories));
+      } catch (error) {
+        console.error('Error loading categories from localStorage:', error);
+        setCategories(mockCategories);
       }
     }
   }, []);
@@ -29,6 +43,11 @@ function App() {
     localStorage.setItem('budgetPlannerExpenses', JSON.stringify(expenses));
   }, [expenses]);
 
+  // Save categories to localStorage whenever categories change
+  useEffect(() => {
+    localStorage.setItem('budgetPlannerCategories', JSON.stringify(categories));
+  }, [categories]);
+
   const handleAddExpense = (expenseData) => {
     setExpenses(prev => [expenseData, ...prev]);
     setCurrentView('dashboard');
@@ -36,6 +55,24 @@ function App() {
       title: "Expense Added Successfully!",
       description: `Added ${expenseData.description} for ₹${expenseData.amount.toLocaleString('en-IN')}`,
     });
+  };
+
+  const handleUpdateExpense = (expenseId, updateData) => {
+    setExpenses(prev => prev.map(expense => 
+      expense.id === expenseId ? { ...expense, ...updateData } : expense
+    ));
+  };
+
+  const handleDeleteExpense = (expenseId) => {
+    setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
+  };
+
+  const handleBulkImport = (transactions) => {
+    setExpenses(prev => [...transactions, ...prev]);
+  };
+
+  const handleCategoriesUpdate = (newCategories) => {
+    setCategories(newCategories);
   };
 
   const handleAddIncome = () => {
