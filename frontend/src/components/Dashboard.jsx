@@ -149,10 +149,10 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.values(mockCategories).map(category => {
+              {Object.values(categories || mockCategories).map(category => {
                 const categoryTotal = getCategoryExpenses(category.id);
                 const categoryBudget = category.subcategories.reduce((sum, sub) => sum + sub.budgetLimit, 0);
-                const percentage = (categoryTotal / categoryBudget) * 100;
+                const percentage = categoryBudget > 0 ? (categoryTotal / categoryBudget) * 100 : 0;
                 
                 return (
                   <div key={category.id} className="space-y-3">
