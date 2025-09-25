@@ -1,52 +1,95 @@
-import { useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import { Toaster } from "./components/ui/toaster";
+import { useToast } from "./hooks/use-toast";
+import Dashboard from "./components/Dashboard";
+import ExpenseForm from "./components/ExpenseForm";
+import Reports from "./components/Reports";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+function App() {
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [expenses, setExpenses] = useState([]);
+  const { toast } = useToast();
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+  // Load expenses from localStorage on app start
+  useEffect(() => {
+    const savedExpenses = localStorage.getItem('budgetPlannerExpenses');
+    if (savedExpenses) {
+      try {
+        setExpenses(JSON.parse(savedExpenses));
+      } catch (error) {
+        console.error('Error loading expenses from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Save expenses to localStorage whenever expenses change
+  useEffect(() => {
+    localStorage.setItem('budgetPlannerExpenses', JSON.stringify(expenses));
+  }, [expenses]);
+
+  const handleAddExpense = (expenseData) => {
+    setExpenses(prev => [expenseData, ...prev]);
+    setCurrentView('dashboard');
+    toast({
+      title: "Expense Added Successfully!",
+      description: `Added ${expenseData.description} for ₹${expenseData.amount.toLocaleString('en-IN')}`,
+    });
+  };
+
+  const handleAddIncome = () => {
+    toast({
+      title: "Income Management",
+      description: "Income management will be available in the next update. Currently showing mock income of ₹82,000.",
+    });
+  };
+
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return (
+          <Dashboard 
+            onAddExpense={() => setCurrentView('add-expense')}
+            onAddIncome={handleAddIncome}
+            onViewReports={() => setCurrentView('reports')}
+            expenses={expenses}
+          />
+        );
+      case 'add-expense':
+        return (
+          <ExpenseForm 
+            onBack={() => setCurrentView('dashboard')}
+            onSave={handleAddExpense}
+          />
+        );
+      case 'reports':
+        return (
+          <Reports 
+            onBack={() => setCurrentView('dashboard')}
+            expenses={expenses}
+          />
+        );
+      default:
+        return (
+          <Dashboard 
+            onAddExpense={() => setCurrentView('add-expense')}
+            onAddIncome={handleAddIncome}
+            onViewReports={() => setCurrentView('reports')}
+            expenses={expenses}
+          />
+        );
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
-
-function App() {
   return (
     <div className="App">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
+          <Route path="/*" element={renderCurrentView()} />
         </Routes>
       </BrowserRouter>
+      <Toaster />
     </div>
   );
 }
