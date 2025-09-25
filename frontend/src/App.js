@@ -127,6 +127,7 @@ function App() {
             onDelete={handleDeleteExpense}
             onBulkUpdate={() => {}} // Handled internally by TransactionList
             onBulkImport={handleBulkImport}
+            onBulkCreate={handleBulkCreate}
             onCategoriesUpdate={handleCategoriesUpdate}
             categories={categories}
             onBack={() => setCurrentView('dashboard')}
