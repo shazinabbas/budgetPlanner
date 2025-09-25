@@ -64,7 +64,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
     });
   };
 
-  const selectedCategory = mockCategories[formData.category];
+  const selectedCategory = (categories || mockCategories)[formData.category];
   const selectedPaymentMethod = mockPaymentMethods.find(pm => pm.id === formData.paymentMethod);
 
   return (
