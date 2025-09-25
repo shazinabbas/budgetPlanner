@@ -71,6 +71,14 @@ function App() {
     setExpenses(prev => [...transactions, ...prev]);
   };
 
+  const handleBulkCreate = (transactions) => {
+    setExpenses(prev => [...transactions, ...prev]);
+    toast({
+      title: "Bulk Create Successful!",
+      description: `Created ${transactions.length} transaction(s) successfully.`,
+    });
+  };
+
   const handleCategoriesUpdate = (newCategories) => {
     setCategories(newCategories);
   };
