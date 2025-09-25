@@ -33,7 +33,8 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
   };
 
   const getCategoryExpenses = (categoryId) => {
-    return mockExpenses
+    const currentExpenses = expenses.length > 0 ? expenses : mockExpenses;
+    return currentExpenses
       .filter(expense => expense.category === categoryId)
       .reduce((sum, expense) => sum + expense.amount, 0);
   };
