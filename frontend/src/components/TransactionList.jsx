@@ -108,7 +108,22 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
   const isIndeterminate = selectedTransactions.length > 0 && selectedTransactions.length < filteredAndSortedExpenses.length;
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Back Button */}
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onBack}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+        </div>
+
+        <div className="space-y-6">
       {/* Header with Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
