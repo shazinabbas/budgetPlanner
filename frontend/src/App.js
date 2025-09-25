@@ -90,7 +90,9 @@ function App() {
             onAddExpense={() => setCurrentView('add-expense')}
             onAddIncome={handleAddIncome}
             onViewReports={() => setCurrentView('reports')}
+            onViewTransactions={() => setCurrentView('transactions')}
             expenses={expenses}
+            categories={categories}
           />
         );
       case 'add-expense':
@@ -98,6 +100,7 @@ function App() {
           <ExpenseForm 
             onBack={() => setCurrentView('dashboard')}
             onSave={handleAddExpense}
+            categories={categories}
           />
         );
       case 'reports':
@@ -105,6 +108,20 @@ function App() {
           <Reports 
             onBack={() => setCurrentView('dashboard')}
             expenses={expenses}
+            categories={categories}
+          />
+        );
+      case 'transactions':
+        return (
+          <TransactionList
+            expenses={expenses}
+            onUpdate={handleUpdateExpense}
+            onDelete={handleDeleteExpense}
+            onBulkUpdate={() => {}} // Handled internally by TransactionList
+            onBulkImport={handleBulkImport}
+            onCategoriesUpdate={handleCategoriesUpdate}
+            categories={categories}
+            onBack={() => setCurrentView('dashboard')}
           />
         );
       default:
@@ -113,7 +130,9 @@ function App() {
             onAddExpense={() => setCurrentView('add-expense')}
             onAddIncome={handleAddIncome}
             onViewReports={() => setCurrentView('reports')}
+            onViewTransactions={() => setCurrentView('transactions')}
             expenses={expenses}
+            categories={categories}
           />
         );
     }
