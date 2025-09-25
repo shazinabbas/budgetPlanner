@@ -337,6 +337,7 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
           </div>
         </CardContent>
       </Card>
+        </div>
       </div>
     </div>
   );
