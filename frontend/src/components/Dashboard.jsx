@@ -8,19 +8,18 @@ import { Plus, TrendingUp, TrendingDown, Wallet, Target, PieChart } from 'lucide
 import { mockExpenses, mockIncomeData, mockBudgetLimits, mockCategories } from '../utils/mockData';
 
 const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransactions, expenses, categories }) => {
-  const [expenses, setExpenses] = useState([]);
   const [income, setIncome] = useState(null);
   const [budgetData, setBudgetData] = useState({});
 
   useEffect(() => {
-    // Simulate loading mock data
-    setExpenses(mockExpenses);
+    // Load income data and calculate budget
     setIncome(mockIncomeData);
     calculateBudgetData();
-  }, []);
+  }, [expenses]);
 
   const calculateBudgetData = () => {
-    const totalExpenses = mockExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const currentExpenses = expenses.length > 0 ? expenses : mockExpenses;
+    const totalExpenses = currentExpenses.reduce((sum, expense) => sum + expense.amount, 0);
     const totalIncome = mockIncomeData.amount;
     const remainingBudget = totalIncome - totalExpenses;
     const savingsProgress = (remainingBudget / mockBudgetLimits.savings_goal) * 100;
