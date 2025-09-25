@@ -124,8 +124,8 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
         </div>
 
         <div className="space-y-6">
-      {/* Header with Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          {/* Header with Actions */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">All Transactions</h2>
           <p className="text-slate-600">{expenses.length} total transactions</p>
