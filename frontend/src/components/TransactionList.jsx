@@ -287,8 +287,8 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
                       </div>
                       <div className="font-medium text-slate-800">{expense.description}</div>
                       <div className="flex items-center justify-between">
-                        <div className="font-semibold text-rose-600">
-                          -{formatCurrency(expense.amount)}
+                        <div className={`font-semibold ${expense.category === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {expense.category === 'income' ? '+' : '-'}{formatCurrency(expense.amount)}
                         </div>
                         <div className="flex gap-1">
                           <Badge variant="outline" className="text-xs">
@@ -315,8 +315,8 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
                       <span className="font-medium text-slate-800">{expense.description}</span>
                     </div>
                     <div className="hidden md:flex md:col-span-2 items-center">
-                      <span className="font-semibold text-rose-600">
-                        -{formatCurrency(expense.amount)}
+                      <span className={`font-semibold ${expense.category === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {expense.category === 'income' ? '+' : '-'}{formatCurrency(expense.amount)}
                       </span>
                     </div>
                     <div className="hidden md:flex md:col-span-2 items-center">

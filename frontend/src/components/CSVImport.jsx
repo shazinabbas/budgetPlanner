@@ -27,62 +27,61 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
     const blob = new Blob([csvTemplate], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = 'budget_planner_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Template Downloaded",
-      description: "CSV template downloaded successfully. Fill it out and upload back!",
-    });
-  };
-
-  const validateCSVRow = (row, index) => {
-    const errors = [];
-    const requiredFields = ['Date', 'Description', 'Amount', 'Category', 'Subcategory', 'Payment Method'];
-    
-    // Check required fields
-    requiredFields.forEach(field => {
-      if (!row[field] || row[field].trim() === '') {
-        errors.push(`Row ${index + 1}: Missing ${field}`);
-      }
-    });
-
-    // Validate date format
-    if (row.Date) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(row.Date)) {
-        errors.push(`Row ${index + 1}: Date must be in YYYY-MM-DD format`);
-      }
-    }
-
-    // Validate amount
-    if (row.Amount) {
-      const amount = parseFloat(row.Amount);
-      if (isNaN(amount) || amount <= 0) {
-        errors.push(`Row ${index + 1}: Amount must be a positive number`);
-      }
-    }
-
-    // Validate category
-    if (row.Category) {
-      const category = row.Category.toLowerCase();
-      if (!['needs', 'wants', 'investments'].includes(category)) {
-        errors.push(`Row ${index + 1}: Category must be 'needs', 'wants', or 'investments'`);
-      }
-    }
-
-    return errors;
-  };
-
-  const parseCSV = (csvText) => {
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
-    const expectedHeaders = ['Date', 'Description', 'Amount', 'Category', 'Subcategory', 'Payment Method'];
-    
-    // Check headers
-    const missingHeaders = expectedHeaders.filter(h => !headers.includes(h));
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const XLSX = require('xlsx');
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const xlsRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          // ...existing code for header detection and transaction extraction...
+          let headerRowIdx = -1;
+          let headerRow = null;
+          for (let i = 0; i < xlsRows.length; i++) {
+            const row = xlsRows[i].map(cell => String(cell).trim());
+            if (row.some(cell => cell.replace(/\s/g, '').toLowerCase().includes('date'))) {
+              console.log(`Possible header at line ${i + 1}:`, row.join(','));
+            }
+            if (
+              row.length >= 7 &&
+              row[0].replace(/\s/g, '').toLowerCase() === 'date' &&
+              row[1].replace(/\s/g, '').toLowerCase() === 'narration' &&
+              row[2].replace(/\s/g, '').toLowerCase().includes('chq') &&
+              row[3].replace(/\s/g, '').toLowerCase().includes('value') &&
+              row[4].replace(/\s/g, '').toLowerCase().includes('withdrawal') &&
+              row[5].replace(/\s/g, '').toLowerCase().includes('deposit') &&
+              row[6].replace(/\s/g, '').toLowerCase().includes('balance')
+            ) {
+              headerRowIdx = i;
+              headerRow = row;
+              break;
+            }
+          }
+          console.log('HDFC XLS Transaction Header:', headerRow);
+          if (headerRowIdx === -1) {
+            setValidationErrors(['Could not find transaction header row in XLS file.']);
+            return;
+          }
+          const transactions = [];
+          for (let i = headerRowIdx + 1; i < xlsRows.length; i++) {
+            const row = xlsRows[i];
+            if (!row || row.length < 7 || !row[0]) continue;
+            transactions.push({
+              date: row[0],
+              narration: row[1],
+              refNo: row[2],
+              valueDate: row[3],
+              withdrawal: row[4],
+              deposit: row[5],
+              balance: row[6],
+            });
+          }
+          setParsedRows(transactions);
+        } catch (err) {
+          setValidationErrors(['Failed to parse XLS file.']);
+        }
+      };
     if (missingHeaders.length > 0) {
       throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
     }
@@ -111,46 +110,228 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
-      toast({
-        title: "Invalid File Type",
-        description: "Please upload a CSV file.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    const ext = file.name.split('.').pop().toLowerCase();
     setIsProcessing(true);
     const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      try {
-        const csvText = e.target.result;
-        const { data, errors } = parseCSV(csvText);
-        
-        setCsvData(data);
-        setValidationErrors(errors);
-        setPreviewData(data.slice(0, 5)); // Show first 5 rows for preview
-        setIsProcessing(false);
-        
-        if (errors.length === 0) {
+
+    if (ext === 'csv') {
+      reader.onload = (e) => {
+        try {
+          const csvText = e.target.result;
+          const { data, errors } = parseCSV(csvText);
+          setCsvData(data);
+          setValidationErrors(errors);
+          setIsProcessing(false);
+          if (errors.length === 0) {
+            toast({
+              title: "CSV Parsed Successfully",
+              description: `Found ${data.length} transactions ready to import.`,
+            });
+          }
+        } catch (error) {
+          setValidationErrors([error.message]);
+          setIsProcessing(false);
           toast({
-            title: "CSV Parsed Successfully",
-            description: `Found ${data.length} transactions ready to import.`,
+            title: "CSV Parse Error",
+            description: error.message,
+            variant: "destructive"
           });
         }
-      } catch (error) {
-        setValidationErrors([error.message]);
-        setIsProcessing(false);
-        toast({
-          title: "CSV Parse Error",
-          description: error.message,
-          variant: "destructive"
-        });
-      }
-    };
-    
-    reader.readAsText(file);
+      };
+      reader.readAsText(file);
+    } else if (ext === 'xls' || ext === 'xlsx') {
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const XLSX = require('xlsx');
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const xlsRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          // Header detection and transaction extraction
+          let headerRowIdx = -1;
+          let headerRow = null;
+          for (let i = 0; i < xlsRows.length; i++) {
+            const row = xlsRows[i].map(cell => String(cell).trim());
+            if (row.some(cell => cell.replace(/\s/g, '').toLowerCase().includes('date'))) {
+              console.log(`Possible header at line ${i + 1}:`, row.join(','));
+            }
+            if (
+              row.length >= 7 &&
+              row[0].replace(/\s/g, '').toLowerCase() === 'date' &&
+              row[1].replace(/\s/g, '').toLowerCase() === 'narration' &&
+              row[2].replace(/\s/g, '').toLowerCase().includes('chq') &&
+              row[3].replace(/\s/g, '').toLowerCase().includes('value') &&
+              row[4].replace(/\s/g, '').toLowerCase().includes('withdrawal') &&
+              row[5].replace(/\s/g, '').toLowerCase().includes('deposit') &&
+              row[6].replace(/\s/g, '').toLowerCase().includes('balance')
+            ) {
+              headerRowIdx = i;
+              headerRow = row;
+              break;
+            }
+          }
+          console.log('HDFC XLS Transaction Header:', headerRow);
+          if (headerRowIdx === -1) {
+            setValidationErrors(['Could not find transaction header row in XLS file.']);
+            setIsProcessing(false);
+            return;
+          }
+          
+          // Helper function to convert Excel date serial number to DD/MM/YY
+          const excelDateToJSDate = (excelDate) => {
+            // Excel date starts from 1900-01-01 (serial 1)
+            const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+            const date = new Date(excelEpoch.getTime() + excelDate * 86400 * 1000);
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const year = String(date.getUTCFullYear()).slice(-2);
+            const result = `${day}/${month}/${year}`;
+            
+            console.log(`DEBUG: Excel serial ${excelDate} → JS Date: ${date.toISOString()} → Formatted: ${result}`);
+            console.log(`  Day: ${day}, Month: ${month}, Year: ${year}`);
+            
+            return result;
+          };
+          
+          console.log('=== Starting XLS Transaction Parsing ===');
+          console.log(`Total rows in sheet: ${xlsRows.length}`);
+          console.log(`Header found at row: ${headerRowIdx + 1}`);
+          
+          const transactions = [];
+          for (let i = headerRowIdx + 1; i < xlsRows.length; i++) {
+            const row = xlsRows[i];
+            if (!row || row.length < 7 || !row[0]) {
+              console.log(`Row ${i + 1}: SKIPPED - Empty or insufficient columns`);
+              continue;
+            }
+            
+            // Skip rows that don't have a valid date in the first column
+            const dateValue = row[0];
+            const dateStr = String(dateValue).trim();
+            
+            console.log(`Row ${i + 1}: Raw date value:`, dateValue, `(type: ${typeof dateValue})`);
+            
+            // Check if it's a valid date format (DD/MM/YY or DD/MM/YYYY or Excel date number)
+            const isDateString = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(dateStr);
+            const isExcelDate = typeof dateValue === 'number' && dateValue > 1 && dateValue < 100000;
+            
+            console.log(`  isDateString: ${isDateString}, isExcelDate: ${isExcelDate}`);
+            
+            if (!isDateString && !isExcelDate) {
+              console.log(`  ❌ SKIPPED - Not a valid date`);
+              continue;
+            }
+            
+            // Skip rows with footer/summary keywords in narration
+            const narration = String(row[1] || '').toLowerCase();
+            if (narration.includes('closing balance') || 
+                narration.includes('opening balance') ||
+                narration.includes('total') ||
+                narration.startsWith('*')) {
+              console.log(`  ❌ SKIPPED - Footer/summary row: ${narration}`);
+              continue;
+            }
+            
+            // Convert Excel date to readable format if needed
+            let formattedDate = dateStr;
+            if (isExcelDate) {
+              formattedDate = excelDateToJSDate(dateValue);
+              console.log(`  ✅ Excel date converted to: ${formattedDate}`);
+            } else {
+              console.log(`  ✅ Using date string as-is: ${formattedDate}`);
+            }
+            
+            transactions.push({
+              date: formattedDate,
+              narration: row[1],
+              refNo: row[2],
+              valueDate: row[3],
+              withdrawal: row[4],
+              deposit: row[5],
+              balance: row[6],
+            });
+            
+            console.log(`Added transaction ${i + 1}:`, {
+              date: formattedDate,
+              narration: row[1],
+              withdrawal: `"${row[4]}" (type: ${typeof row[4]}, empty: ${!row[4]})`,
+              deposit: `"${row[5]}" (type: ${typeof row[5]}, empty: ${!row[5]})`,
+            });
+          }
+          
+          console.log(`=== Parsing Complete: ${transactions.length} transactions found ===`);
+          
+          // Map transactions to CSV format for preview
+          const mappedData = transactions.map(t => {
+            let amount = 0;
+            let category = '';
+            const withdrawal = parseFloat(t.withdrawal) || 0;
+            const deposit = parseFloat(t.deposit) || 0;
+            
+            console.log(`Transaction: withdrawal=${t.withdrawal}, deposit=${t.deposit}, parsed: w=${withdrawal}, d=${deposit}`);
+            
+            // Use absolute values - withdrawals and deposits both positive
+            // Set category based on transaction type
+            if (withdrawal > 0) {
+              amount = Math.abs(withdrawal);
+              category = 'needs'; // Default expense category
+            } else if (deposit > 0) {
+              amount = Math.abs(deposit);
+              category = 'income'; // Income category
+            }
+            
+            console.log(`  Final amount: ${amount}, category: ${category}`);
+            
+            return {
+              Date: t.date,
+              Description: t.narration,
+              Amount: amount,
+              Category: category,
+              Subcategory: '',
+              'Payment Method': ''
+            };
+          });
+          
+          setCsvData(mappedData);
+          setValidationErrors([]);
+          setPreviewData(mappedData.slice(0, 5));
+          setIsProcessing(false);
+          
+          toast({
+            title: "XLS Parsed Successfully",
+            description: `Found ${transactions.length} transactions ready to import.`,
+          });
+          
+          // Show reminder for missing fields
+          setTimeout(() => {
+            toast({
+              title: "⚠️ Reminder: Add Missing Details",
+              description: "Don't forget to add Category, Subcategory, and Payment Method before importing!",
+              variant: "default",
+              duration: 8000,
+            });
+          }, 1000);
+        } catch (error) {
+          setValidationErrors([error.message]);
+          setIsProcessing(false);
+          toast({
+            title: "XLS Parse Error",
+            description: error.message,
+            variant: "destructive"
+          });
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      setIsProcessing(false);
+      toast({
+        title: "Invalid File Type",
+        description: "Please upload a CSV or XLS/XLSX file.",
+        variant: "destructive"
+      });
+    }
   };
 
   const processImport = () => {
@@ -162,6 +343,22 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
       });
       return;
     }
+
+    // Helper to convert DD/MM/YY to YYYY-MM-DD
+    const convertDateToISO = (dateStr) => {
+      const parts = dateStr.split('/');
+      if (parts.length === 3) {
+        const day = parts[0].padStart(2, '0');
+        const month = parts[1].padStart(2, '0');
+        let year = parts[2];
+        // Convert 2-digit year to 4-digit (25 -> 2025, 26 -> 2026)
+        if (year.length === 2) {
+          year = parseInt(year) >= 50 ? `19${year}` : `20${year}`;
+        }
+        return `${year}-${month}-${day}`;
+      }
+      return dateStr; // Return as-is if format is unexpected
+    };
 
     const processedTransactions = [];
     const currentCategories = cacheStore.getCategories();
@@ -194,7 +391,7 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
         category: category,
         subcategory: subcategory,
         paymentMethod: paymentMethodId,
-        date: row.Date,
+        date: convertDateToISO(row.Date),
         createdAt: new Date().toISOString()
       };
       
@@ -228,6 +425,29 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
     }
   };
 
+  // Add HDFC header mapping function
+  function mapHDFCRowToSchema(row, headers) {
+    // Find column indices
+    const idxDate = headers.findIndex(h => h.toLowerCase().includes('txn date'));
+    const idxNarration = headers.findIndex(h => h.toLowerCase().includes('narration'));
+    const idxWithdrawal = headers.findIndex(h => h.toLowerCase().includes('withdrawal'));
+    const idxDeposit = headers.findIndex(h => h.toLowerCase().includes('deposit'));
+
+    // Determine amount and type
+    let amount = null;
+    if (idxWithdrawal !== -1 && row[idxWithdrawal]) amount = row[idxWithdrawal];
+    else if (idxDeposit !== -1 && row[idxDeposit]) amount = row[idxDeposit];
+
+    return {
+      Date: idxDate !== -1 ? row[idxDate] : '',
+      Description: idxNarration !== -1 ? row[idxNarration] : '',
+      Amount: amount || '',
+      Category: null,
+      Subcategory: null,
+      'Payment Method': null
+    };
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -238,7 +458,7 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">Import Transactions from CSV</DialogTitle>
+          <DialogTitle className="text-xl">Import Transactions (CSV)</DialogTitle>
           <DialogDescription>
             Upload a CSV file to bulk import transactions. Use our template for the correct format.
           </DialogDescription>
@@ -273,7 +493,7 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
           {/* File Upload */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Upload CSV File</CardTitle>
+              <CardTitle className="text-lg">Upload File (CSV)</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -284,13 +504,13 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
                       <p className="mb-2 text-sm text-gray-500">
                         <span className="font-semibold">Click to upload</span> or drag and drop
                       </p>
-                      <p className="text-xs text-gray-500">CSV files only</p>
+                      <p className="text-xs text-gray-500">CSV, XLS files only</p>
                     </div>
                     <input
                       ref={fileInputRef}
                       type="file"
                       className="hidden"
-                      accept=".csv"
+                      accept=".csv,.xls,.xlsx"
                       onChange={handleFileUpload}
                     />
                   </label>
