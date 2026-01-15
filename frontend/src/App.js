@@ -5,51 +5,35 @@ import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./hooks/use-toast";
 import Dashboard from "./components/Dashboard";
 import ExpenseForm from "./components/ExpenseForm";
+import IncomeForm from "./components/IncomeForm";
 import Reports from "./components/Reports";
 import TransactionList from "./components/TransactionList";
-import { mockCategories } from "./utils/mockData";
+import { cacheStore } from "./services/cache";
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
-  const [expenses, setExpenses] = useState([]);
-  const [categories, setCategories] = useState(mockCategories);
+  const [expenses, setExpenses] = useState(() => cacheStore.getExpenses());
+  const [categories, setCategories] = useState(() => cacheStore.getCategories());
   const { toast } = useToast();
 
-  // Load expenses from localStorage on app start
+  // Subscribe to cache changes
   useEffect(() => {
-    const savedExpenses = localStorage.getItem('budgetPlannerExpenses');
-    const savedCategories = localStorage.getItem('budgetPlannerCategories');
-    
-    if (savedExpenses) {
-      try {
-        setExpenses(JSON.parse(savedExpenses));
-      } catch (error) {
-        console.error('Error loading expenses from localStorage:', error);
-      }
-    }
-    
-    if (savedCategories) {
-      try {
-        setCategories(JSON.parse(savedCategories));
-      } catch (error) {
-        console.error('Error loading categories from localStorage:', error);
-        setCategories(mockCategories);
-      }
-    }
+    const unsubscribeExpenses = cacheStore.subscribe('expenses', (data) => {
+      setExpenses(data);
+    });
+
+    const unsubscribeCategories = cacheStore.subscribe('categories', (data) => {
+      setCategories(data);
+    });
+
+    return () => {
+      unsubscribeExpenses();
+      unsubscribeCategories();
+    };
   }, []);
 
-  // Save expenses to localStorage whenever expenses change
-  useEffect(() => {
-    localStorage.setItem('budgetPlannerExpenses', JSON.stringify(expenses));
-  }, [expenses]);
-
-  // Save categories to localStorage whenever categories change
-  useEffect(() => {
-    localStorage.setItem('budgetPlannerCategories', JSON.stringify(categories));
-  }, [categories]);
-
   const handleAddExpense = (expenseData) => {
-    setExpenses(prev => [expenseData, ...prev]);
+    cacheStore.addExpense(expenseData);
     setCurrentView('dashboard');
     toast({
       title: "Expense Added Successfully!",
@@ -58,21 +42,19 @@ function App() {
   };
 
   const handleUpdateExpense = (expenseId, updateData) => {
-    setExpenses(prev => prev.map(expense => 
-      expense.id === expenseId ? { ...expense, ...updateData } : expense
-    ));
+    cacheStore.updateExpense(expenseId, updateData);
   };
 
   const handleDeleteExpense = (expenseId) => {
-    setExpenses(prev => prev.filter(expense => expense.id !== expenseId));
+    cacheStore.deleteExpense(expenseId);
   };
 
   const handleBulkImport = (transactions) => {
-    setExpenses(prev => [...transactions, ...prev]);
+    cacheStore.addExpenses(transactions);
   };
 
   const handleBulkCreate = (transactions) => {
-    setExpenses(prev => [...transactions, ...prev]);
+    cacheStore.addExpenses(transactions);
     toast({
       title: "Bulk Create Successful!",
       description: `Created ${transactions.length} transaction(s) successfully.`,
@@ -80,14 +62,15 @@ function App() {
   };
 
   const handleCategoriesUpdate = (newCategories) => {
-    setCategories(newCategories);
+    cacheStore.updateCategories(newCategories);
   };
 
   const handleAddIncome = () => {
-    toast({
-      title: "Income Management",
-      description: "Income management will be available in the next update. Currently showing mock income of ₹82,000.",
-    });
+    setCurrentView('add-income');
+  };
+
+  const handleSaveIncome = (incomeData) => {
+    setCurrentView('dashboard');
   };
 
   const renderCurrentView = () => {
@@ -131,6 +114,13 @@ function App() {
             onCategoriesUpdate={handleCategoriesUpdate}
             categories={categories}
             onBack={() => setCurrentView('dashboard')}
+          />
+        );
+      case 'add-income':
+        return (
+          <IncomeForm 
+            onBack={() => setCurrentView('dashboard')}
+            onSave={handleSaveIncome}
           />
         );
       default:

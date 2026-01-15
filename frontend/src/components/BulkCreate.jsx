@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Plus, Save, X, Trash2, Copy, AlertCircle, Check } from 'lucide-react';
-import { mockCategories, mockPaymentMethods } from '../utils/mockData';
+import { cacheStore } from '../services/cache';
 import { useToast } from '../hooks/use-toast';
 
 const BulkCreate = ({ onBulkCreate, categories }) => {
@@ -266,7 +266,7 @@ const BulkCreate = ({ onBulkCreate, categories }) => {
               </thead>
               <tbody>
                 {transactions.map((transaction, index) => {
-                  const selectedCategory = (categories || mockCategories)[transaction.category];
+                  const selectedCategory = (categories || cacheStore.getCategories())[transaction.category];
                   const hasErrors = validationErrors[transaction.id];
                   
                   return (
@@ -311,7 +311,7 @@ const BulkCreate = ({ onBulkCreate, categories }) => {
                             <SelectValue placeholder="Category" />
                           </SelectTrigger>
                           <SelectContent>
-                            {Object.values(categories || mockCategories).map(category => (
+                            {Object.values(categories || cacheStore.getCategories()).map(category => (
                               <SelectItem key={category.id} value={category.id}>
                                 {category.name}
                               </SelectItem>
@@ -356,7 +356,7 @@ const BulkCreate = ({ onBulkCreate, categories }) => {
                             <SelectValue placeholder="Payment" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mockPaymentMethods.map(method => (
+                            {cacheStore.getPaymentMethods().map(method => (
                               <SelectItem key={method.id} value={method.id}>
                                 {method.name}
                               </SelectItem>

@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { ArrowLeft, Download, Filter, TrendingUp, Calendar, DollarSign } from 'lucide-react';
-import { mockExpenses, mockIncomeData, mockCategories, mockPaymentMethods, mockMonthlyData } from '../utils/mockData';
+import { cacheStore } from '../services/cache';
 
 const Reports = ({ onBack }) => {
   const [selectedMonth, setSelectedMonth] = useState('Jul');
@@ -20,36 +20,38 @@ const Reports = ({ onBack }) => {
   };
 
   const monthlyStats = useMemo(() => {
-    const currentMonthData = mockMonthlyData.find(data => data.month === selectedMonth);
-    const totalExpenses = mockExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const expenses = cacheStore.getExpenses();
+    const categories = cacheStore.getCategories();
+    const paymentMethods = cacheStore.getPaymentMethods();
     
-    const categoryBreakdown = Object.keys(mockCategories).map(categoryId => {
-      const categoryExpenses = mockExpenses.filter(expense => expense.category === categoryId);
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    
+    const categoryBreakdown = Object.keys(categories).map(categoryId => {
+      const categoryExpenses = expenses.filter(expense => expense.category === categoryId);
       const categoryTotal = categoryExpenses.reduce((sum, expense) => sum + expense.amount, 0);
       
       return {
         id: categoryId,
-        name: mockCategories[categoryId].name,
+        name: categories[categoryId].name,
         total: categoryTotal,
-        percentage: ((categoryTotal / totalExpenses) * 100).toFixed(1),
+        percentage: totalExpenses > 0 ? ((categoryTotal / totalExpenses) * 100).toFixed(1) : 0,
         transactions: categoryExpenses.length
       };
     });
 
-    const paymentMethodBreakdown = mockPaymentMethods.map(method => {
-      const methodExpenses = mockExpenses.filter(expense => expense.paymentMethod === method.id);
+    const paymentMethodBreakdown = paymentMethods.map(method => {
+      const methodExpenses = expenses.filter(expense => expense.paymentMethod === method.id);
       const methodTotal = methodExpenses.reduce((sum, expense) => sum + expense.amount, 0);
       
       return {
         ...method,
         total: methodTotal,
-        percentage: ((methodTotal / totalExpenses) * 100).toFixed(1),
+        percentage: totalExpenses > 0 ? ((methodTotal / totalExpenses) * 100).toFixed(1) : 0,
         transactions: methodExpenses.length
       };
     }).filter(method => method.total > 0);
 
     return {
-      currentMonthData,
       totalExpenses,
       categoryBreakdown,
       paymentMethodBreakdown
@@ -57,20 +59,24 @@ const Reports = ({ onBack }) => {
   }, [selectedMonth]);
 
   const filteredExpenses = useMemo(() => {
-    return mockExpenses.filter(expense => 
+    const expenses = cacheStore.getExpenses();
+    return expenses.filter(expense =>
       selectedCategory === 'all' || expense.category === selectedCategory
     );
   }, [selectedCategory]);
 
   const handleExportCSV = () => {
+    const categories = cacheStore.getCategories();
+    const paymentMethods = cacheStore.getPaymentMethods();
+    
     const csvData = [
       ['Date', 'Description', 'Category', 'Subcategory', 'Payment Method', 'Amount'],
       ...filteredExpenses.map(expense => [
         expense.date,
         expense.description,
-        mockCategories[expense.category]?.name || expense.category,
+        categories[expense.category]?.name || expense.category,
         expense.subcategory,
-        mockPaymentMethods.find(pm => pm.id === expense.paymentMethod)?.name || expense.paymentMethod,
+        paymentMethods.find(pm => pm.id === expense.paymentMethod)?.name || expense.paymentMethod,
         expense.amount
       ])
     ];
@@ -138,8 +144,8 @@ const Reports = ({ onBack }) => {
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
                 >
-                  {mockMonthlyData.map(data => (
-                    <option key={data.month} value={data.month}>{data.month} 2024</option>
+                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(month => (
+                    <option key={month} value={month}>{month} 2024</option>
                   ))}
                 </select>
               </div>
@@ -151,7 +157,7 @@ const Reports = ({ onBack }) => {
                   onChange={(e) => setSelectedCategory(e.target.value)}
                 >
                   <option value="all">All Categories</option>
-                  {Object.values(mockCategories).map(category => (
+                  {Object.values(cacheStore.getCategories()).map(category => (
                     <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
@@ -180,30 +186,36 @@ const Reports = ({ onBack }) => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {mockMonthlyData.map((data, index) => (
-                    <div key={data.month} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium">{data.month} 2024</span>
-                        <span className="text-slate-600">
-                          Savings: {formatCurrency(data.savings)} ({((data.savings / data.income) * 100).toFixed(1)}%)
-                        </span>
+                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'].map((month, index) => {
+                    const monthExpenses = cacheStore.getExpenses().length > 0 ? monthlyStats.totalExpenses / 7 : 0;
+                    const monthIncome = cacheStore.getIncome().amount || 0;
+                    const monthSavings = monthIncome - monthExpenses;
+                    
+                    return (
+                      <div key={month} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium">{month} 2024</span>
+                          <span className="text-slate-600">
+                            Savings: {formatCurrency(monthSavings)} ({monthIncome > 0 ? ((monthSavings / monthIncome) * 100).toFixed(1) : 0}%)
+                          </span>
+                        </div>
+                        <div className="relative h-8 bg-slate-100 rounded-lg overflow-hidden">
+                          <div 
+                            className="absolute left-0 top-0 h-full bg-gradient-to-r from-red-400 to-red-500"
+                            style={{ width: monthIncome > 0 ? `${(monthExpenses / monthIncome) * 100}%` : '0%' }}
+                          />
+                          <div 
+                            className="absolute right-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500"
+                            style={{ width: monthIncome > 0 ? `${(monthSavings / monthIncome) * 100}%` : '0%' }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-xs text-slate-600">
+                          <span>Expenses: {formatCurrency(monthExpenses)}</span>
+                          <span>Income: {formatCurrency(monthIncome)}</span>
+                        </div>
                       </div>
-                      <div className="relative h-8 bg-slate-100 rounded-lg overflow-hidden">
-                        <div 
-                          className="absolute left-0 top-0 h-full bg-gradient-to-r from-red-400 to-red-500"
-                          style={{ width: `${(data.expenses / data.income) * 100}%` }}
-                        />
-                        <div 
-                          className="absolute right-0 top-0 h-full bg-gradient-to-r from-green-400 to-green-500"
-                          style={{ width: `${(data.savings / data.income) * 100}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-slate-600">
-                        <span>Expenses: {formatCurrency(data.expenses)}</span>
-                        <span>Income: {formatCurrency(data.income)}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -216,7 +228,7 @@ const Reports = ({ onBack }) => {
                     <div>
                       <p className="text-sm font-medium text-blue-800">Average Monthly Expense</p>
                       <p className="text-2xl font-bold text-blue-900">
-                        {formatCurrency(mockMonthlyData.reduce((sum, data) => sum + data.expenses, 0) / mockMonthlyData.length)}
+                        {formatCurrency(monthlyStats.totalExpenses)}
                       </p>
                     </div>
                     <DollarSign className="h-8 w-8 text-blue-600" />
@@ -230,7 +242,7 @@ const Reports = ({ onBack }) => {
                     <div>
                       <p className="text-sm font-medium text-green-800">Average Monthly Savings</p>
                       <p className="text-2xl font-bold text-green-900">
-                        {formatCurrency(mockMonthlyData.reduce((sum, data) => sum + data.savings, 0) / mockMonthlyData.length)}
+                        {formatCurrency(cacheStore.getIncome().amount - monthlyStats.totalExpenses)}
                       </p>
                     </div>
                     <TrendingUp className="h-8 w-8 text-green-600" />
@@ -243,7 +255,7 @@ const Reports = ({ onBack }) => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-purple-800">Total Transactions</p>
-                      <p className="text-2xl font-bold text-purple-900">{mockExpenses.length}</p>
+                      <p className="text-2xl font-bold text-purple-900">{cacheStore.getExpenses().length}</p>
                     </div>
                     <Calendar className="h-8 w-8 text-purple-600" />
                   </div>
@@ -319,7 +331,7 @@ const Reports = ({ onBack }) => {
               <CardHeader>
                 <CardTitle>Transaction History</CardTitle>
                 <CardDescription>
-                  All your expenses {selectedCategory !== 'all' && `in ${mockCategories[selectedCategory]?.name}`}
+                  All your expenses {selectedCategory !== 'all' && `in ${cacheStore.getCategories()[selectedCategory]?.name}`}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -330,12 +342,12 @@ const Reports = ({ onBack }) => {
                         <span className="font-medium text-slate-800">{expense.description}</span>
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <Badge variant="outline" className="text-xs">
-                            {mockCategories[expense.category]?.name}
+                            {cacheStore.getCategories()[expense.category]?.name}
                           </Badge>
                           <span>•</span>
                           <span className="capitalize">{expense.subcategory}</span>
                           <span>•</span>
-                          <span>{mockPaymentMethods.find(pm => pm.id === expense.paymentMethod)?.name}</span>
+                          <span>{cacheStore.getPaymentMethods().find(pm => pm.id === expense.paymentMethod)?.name}</span>
                         </div>
                       </div>
                       <div className="text-right">

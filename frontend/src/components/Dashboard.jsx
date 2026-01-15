@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Progress } from './ui/progress';
 import { Plus, TrendingUp, TrendingDown, Wallet, Target, PieChart } from 'lucide-react';
-import { mockExpenses, mockIncomeData, mockBudgetLimits, mockCategories } from '../utils/mockData';
+import { cacheStore } from '../services/cache';
 
 const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransactions, expenses, categories }) => {
   const [income, setIncome] = useState(null);
@@ -13,16 +13,19 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
 
   useEffect(() => {
     // Load income data and calculate budget
-    setIncome(mockIncomeData);
+    setIncome(cacheStore.getIncome());
     calculateBudgetData();
   }, [expenses]);
 
   const calculateBudgetData = () => {
-    const currentExpenses = expenses.length > 0 ? expenses : mockExpenses;
+    const currentExpenses = expenses || [];
     const totalExpenses = currentExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const totalIncome = mockIncomeData.amount;
+    const income = cacheStore.getIncome();
+    const totalIncome = income.amount || 0;
+    const budgetLimits = cacheStore.getBudgetLimits();
+    const savingsGoal = budgetLimits.savings_goal || 0;
     const remainingBudget = totalIncome - totalExpenses;
-    const savingsProgress = (remainingBudget / mockBudgetLimits.savings_goal) * 100;
+    const savingsProgress = savingsGoal > 0 ? (remainingBudget / savingsGoal) * 100 : 0;
     
     setBudgetData({
       totalExpenses,
@@ -33,7 +36,7 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
   };
 
   const getCategoryExpenses = (categoryId) => {
-    const currentExpenses = expenses.length > 0 ? expenses : mockExpenses;
+    const currentExpenses = expenses || [];
     return currentExpenses
       .filter(expense => expense.category === categoryId)
       .reduce((sum, expense) => sum + expense.amount, 0);
@@ -130,7 +133,7 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
                 className="mt-2 h-2"
               />
               <p className="text-xs text-purple-700 mt-1">
-                Goal: {formatCurrency(mockBudgetLimits.savings_goal)}
+                Goal: {formatCurrency(cacheStore.getBudgetLimits().savings_goal)}
               </p>
             </CardContent>
           </Card>
@@ -149,7 +152,7 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.values(categories || mockCategories).map(category => {
+              {Object.values(categories || {}).map(category => {
                 const categoryTotal = getCategoryExpenses(category.id);
                 const categoryBudget = category.subcategories.reduce((sum, sub) => sum + sub.budgetLimit, 0);
                 const percentage = categoryBudget > 0 ? (categoryTotal / categoryBudget) * 100 : 0;
@@ -185,12 +188,12 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {(expenses.length > 0 ? expenses : mockExpenses).slice(0, 5).map(expense => (
+              {(expenses || []).slice(0, 5).map(expense => (
                 <div key={expense.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                   <div className="flex flex-col">
                     <span className="font-medium text-slate-800">{expense.description}</span>
                     <span className="text-sm text-slate-600 capitalize">
-                      {(categories || mockCategories)[expense.category]?.name} • {expense.subcategory.replace('_', ' ')}
+                      {(categories || {})[expense.category]?.name} • {expense.subcategory.replace('_', ' ')}
                     </span>
                   </div>
                   <div className="text-right">

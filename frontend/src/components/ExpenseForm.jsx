@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { CalendarIcon, ArrowLeft, Save } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
-import { mockCategories, mockPaymentMethods } from '../utils/mockData';
+import { cacheStore } from '../services/cache';
 
 const ExpenseForm = ({ onBack, onSave, categories }) => {
   const [formData, setFormData] = useState({
@@ -64,8 +64,8 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
     });
   };
 
-  const selectedCategory = (categories || mockCategories)[formData.category];
-  const selectedPaymentMethod = mockPaymentMethods.find(pm => pm.id === formData.paymentMethod);
+  const selectedCategory = (categories || cacheStore.getCategories())[formData.category];
+  const selectedPaymentMethod = cacheStore.getPaymentMethods().find(pm => pm.id === formData.paymentMethod);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
@@ -156,7 +156,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.values(categories || mockCategories).map(category => (
+                      {Object.values(categories || cacheStore.getCategories()).map(category => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
@@ -193,7 +193,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                     <SelectValue placeholder="How did you pay?" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockPaymentMethods.map(method => (
+                    {cacheStore.getPaymentMethods().map(method => (
                       <SelectItem key={method.id} value={method.id}>
                         {method.name} {method.type === 'credit' && `(Due: ${method.dueDate}th)`}
                       </SelectItem>

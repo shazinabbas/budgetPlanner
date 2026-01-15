@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Search, Filter, Trash2, ArrowUpDown, ArrowLeft } from 'lucide-react';
-import { mockCategories, mockPaymentMethods } from '../utils/mockData';
+import { cacheStore } from '../services/cache';
 import BulkActions from './BulkActions';
 import BulkCreate from './BulkCreate';
 import CSVImport from './CSVImport';
@@ -193,7 +193,7 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Categories</SelectItem>
-                      {Object.values(categories || mockCategories).map(category => (
+                      {Object.values(categories || cacheStore.getCategories()).map(category => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
                         </SelectItem>
@@ -292,12 +292,12 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
                         </div>
                         <div className="flex gap-1">
                           <Badge variant="outline" className="text-xs">
-                            {(categories || mockCategories)[expense.category]?.name}
+                            {(categories || cacheStore.getCategories())[expense.category]?.name}
                           </Badge>
                         </div>
                       </div>
                       <div className="text-sm text-gray-600">
-                        {mockPaymentMethods.find(pm => pm.id === expense.paymentMethod)?.name}
+                            {cacheStore.getPaymentMethods().find(pm => pm.id === expense.paymentMethod)?.name}
                       </div>
                     </div>
 
@@ -322,7 +322,7 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
                     <div className="hidden md:flex md:col-span-2 items-center">
                       <div className="space-y-1">
                         <Badge variant="outline" className="text-xs">
-                          {(categories || mockCategories)[expense.category]?.name}
+                          {(categories || cacheStore.getCategories())[expense.category]?.name}
                         </Badge>
                         <div className="text-xs text-gray-500 capitalize">
                           {expense.subcategory.replace('_', ' ')}
@@ -331,7 +331,7 @@ const TransactionList = ({ expenses, onUpdate, onDelete, onBulkUpdate, onBulkImp
                     </div>
                     <div className="hidden md:flex md:col-span-2 items-center">
                       <span className="text-sm text-gray-600">
-                        {mockPaymentMethods.find(pm => pm.id === expense.paymentMethod)?.name}
+                        {cacheStore.getPaymentMethods().find(pm => pm.id === expense.paymentMethod)?.name}
                       </span>
                     </div>
                   </div>

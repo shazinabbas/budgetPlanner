@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Alert, AlertDescription } from './ui/alert';
 import { Upload, Download, FileText, Check, X, AlertCircle, Plus } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
-import { mockCategories, mockPaymentMethods } from '../utils/mockData';
+import { cacheStore } from '../services/cache';
 
 const CSVImport = ({ onImport, onCategoriesUpdate }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -164,7 +164,9 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
     }
 
     const processedTransactions = [];
-    const newCategories = { ...mockCategories };
+    const currentCategories = cacheStore.getCategories();
+    const paymentMethods = cacheStore.getPaymentMethods();
+    const newCategories = { ...currentCategories };
     
     csvData.forEach((row, index) => {
       const category = row.Category.toLowerCase();
@@ -175,12 +177,12 @@ const CSVImport = ({ onImport, onCategoriesUpdate }) => {
         newCategories[category].subcategories.push({
           id: subcategory,
           name: row.Subcategory,
-          budgetLimit: 5000 // Default budget limit for new subcategories
+          budgetLimit: 0 // Default budget limit for new subcategories
         });
       }
       
       // Find payment method by name or create a default one
-      let paymentMethodId = mockPaymentMethods.find(pm => 
+      let paymentMethodId = paymentMethods.find(pm => 
         pm.name.toLowerCase() === row['Payment Method'].toLowerCase() ||
         pm.id === row['Payment Method'].toLowerCase()
       )?.id || 'cash';
