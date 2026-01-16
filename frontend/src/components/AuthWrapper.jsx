@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { auth, provider } from "../lib/firebase";
-import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "firebase/auth";
-import { Wallet, LogOut, User } from "lucide-react";
+import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { Wallet, LogOut } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import {
@@ -16,25 +16,25 @@ import {
 export default function AuthWrapper({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Check for redirect result on mount
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result) {
-          console.log('✅ Sign-in successful via redirect');
-        }
-      })
-      .catch((error) => {
-        console.error('❌ Sign-in error:', error);
-      });
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setError(null);
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Sign-in error:', error);
+      setError(error.message);
+    }
+  };
 
   if (loading) {
     return (
@@ -63,7 +63,7 @@ export default function AuthWrapper({ children }) {
           </p>
 
           <Button
-            onClick={() => signInWithRedirect(auth, provider)}
+            onClick={handleGoogleSignIn}
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -90,6 +90,12 @@ export default function AuthWrapper({ children }) {
           <p className="text-center text-sm text-gray-500 mt-6">
             Secure authentication powered by Firebase
           </p>
+          
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600 text-center">{error}</p>
+            </div>
+          )}
         </div>
       </div>
     );
