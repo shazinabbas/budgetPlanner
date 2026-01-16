@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auth, provider } from "../lib/firebase";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "firebase/auth";
 import { Wallet, LogOut, User } from "lucide-react";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -18,6 +18,17 @@ export default function AuthWrapper({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for redirect result on mount
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result) {
+          console.log('✅ Sign-in successful via redirect');
+        }
+      })
+      .catch((error) => {
+        console.error('❌ Sign-in error:', error);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
@@ -52,7 +63,7 @@ export default function AuthWrapper({ children }) {
           </p>
 
           <Button
-            onClick={() => signInWithPopup(auth, provider)}
+            onClick={() => signInWithRedirect(auth, provider)}
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
           >
             <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
