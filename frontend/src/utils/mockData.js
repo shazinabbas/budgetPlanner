@@ -18,7 +18,8 @@ export const mockCategories = {
       { id: 'utilities', name: 'Utilities', budgetLimit: 0 },
       { id: 'groceries', name: 'Groceries', budgetLimit: 0 },
       { id: 'transportation', name: 'Transportation', budgetLimit: 0 },
-      { id: 'insurance', name: 'Insurance', budgetLimit: 0 }
+      { id: 'insurance', name: 'Insurance', budgetLimit: 0 },
+      { id: 'family_support', name: 'Family Support', budgetLimit: 0 }
     ]
   },
   wants: {
@@ -28,7 +29,8 @@ export const mockCategories = {
       { id: 'entertainment', name: 'Entertainment', budgetLimit: 0 },
       { id: 'dining', name: 'Dining Out', budgetLimit: 0 },
       { id: 'shopping', name: 'Shopping', budgetLimit: 0 },
-      { id: 'hobbies', name: 'Hobbies', budgetLimit: 0 }
+      { id: 'hobbies', name: 'Hobbies', budgetLimit: 0 },
+      { id: 'gifts', name: 'Gifts', budgetLimit: 0 }
     ]
   },
   investments: {
@@ -39,7 +41,19 @@ export const mockCategories = {
       { id: 'mutual_funds', name: 'Mutual Funds', budgetLimit: 0 },
       { id: 'savings', name: 'Savings', budgetLimit: 0 },
       { id: 'emergency_fund', name: 'Emergency Fund', budgetLimit: 0 },
-      { id: 'gold', name: 'Gold', budgetLimit: 0 }
+      { id: 'gold', name: 'Gold', budgetLimit: 0 },
+      { id: 'loans_given', name: 'Loans Given', budgetLimit: 0 }
+    ]
+  },
+  income: {
+    id: 'income',
+    name: 'Income',
+    subcategories: [
+      { id: 'salary', name: 'Salary', budgetLimit: 0 },
+      { id: 'freelance', name: 'Freelance', budgetLimit: 0 },
+      { id: 'loan_returns', name: 'Loan Returns', budgetLimit: 0 },
+      { id: 'refunds', name: 'Refunds', budgetLimit: 0 },
+      { id: 'other_income', name: 'Other Income', budgetLimit: 0 }
     ]
   }
 };

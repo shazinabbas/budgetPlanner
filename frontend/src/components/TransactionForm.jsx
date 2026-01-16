@@ -7,12 +7,14 @@ import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { CalendarIcon, ArrowLeft, Save } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from './ui/tabs';
+import { CalendarIcon, ArrowLeft, Save, TrendingDown, TrendingUp } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import { cacheStore } from '../services/cache';
 
-const ExpenseForm = ({ onBack, onSave, categories }) => {
+const TransactionForm = ({ onBack, onSave, categories }) => {
+  const [transactionType, setTransactionType] = useState('expense'); // 'expense' or 'income'
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
@@ -33,6 +35,16 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
     }));
   };
 
+  const handleTypeChange = (type) => {
+    setTransactionType(type);
+    // Reset category and subcategory when switching types
+    setFormData(prev => ({
+      ...prev,
+      category: type === 'income' ? 'income' : '',
+      subcategory: ''
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.amount || !formData.description || !formData.category || !formData.subcategory || !formData.paymentMethod) {
@@ -40,31 +52,40 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
       return;
     }
 
-    const expenseData = {
+    const transactionData = {
       id: Date.now().toString(),
       amount: parseFloat(formData.amount),
       description: formData.description,
-      category: formData.category,
+      category: transactionType === 'income' ? 'income' : formData.category,
       subcategory: formData.subcategory,
       paymentMethod: formData.paymentMethod,
       date: format(formData.date, 'yyyy-MM-dd'),
       createdAt: new Date().toISOString()
     };
 
-    onSave(expenseData);
+    onSave(transactionData);
     
     // Reset form
     setFormData({
       amount: '',
       description: '',
-      category: '',
+      category: transactionType === 'income' ? 'income' : '',
       subcategory: '',
       paymentMethod: '',
       date: new Date()
     });
   };
 
-  const selectedCategory = (categories || cacheStore.getCategories())[formData.category];
+  // Get categories based on transaction type
+  const availableCategories = transactionType === 'income' 
+    ? { income: (categories || cacheStore.getCategories())['income'] }
+    : Object.fromEntries(
+        Object.entries(categories || cacheStore.getCategories()).filter(([key]) => key !== 'income')
+      );
+
+  const selectedCategory = (categories || cacheStore.getCategories())[
+    transactionType === 'income' ? 'income' : formData.category
+  ];
   const selectedPaymentMethod = cacheStore.getPaymentMethods().find(pm => pm.id === formData.paymentMethod);
 
   return (
@@ -83,13 +104,39 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
         </div>
 
         <Card className="border-0 shadow-xl">
-          <CardHeader className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <CardTitle className="text-2xl">Add New Expense</CardTitle>
-            <CardDescription className="text-blue-100">
-              Track your spending and maintain your budget
+          <CardHeader className={cn(
+            "text-white",
+            transactionType === 'income' 
+              ? "bg-gradient-to-r from-emerald-500 to-emerald-600" 
+              : "bg-gradient-to-r from-blue-500 to-blue-600"
+          )}>
+            <CardTitle className="text-2xl">
+              {transactionType === 'income' ? 'Add Income' : 'Add Expense'}
+            </CardTitle>
+            <CardDescription className={transactionType === 'income' ? "text-emerald-100" : "text-blue-100"}>
+              {transactionType === 'income' 
+                ? 'Track your income sources and earnings' 
+                : 'Track your spending and maintain your budget'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6 space-y-6">
+            {/* Transaction Type Toggle */}
+            <div className="flex justify-center">
+              <Tabs value={transactionType} onValueChange={handleTypeChange} className="w-full max-w-md">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="expense" className="flex items-center gap-2">
+                    <TrendingDown className="w-4 h-4" />
+                    Expense
+                  </TabsTrigger>
+                  <TabsTrigger value="income" className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4" />
+                    Income
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -121,7 +168,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                         {formData.date ? format(formData.date, "PPP") : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={formData.date}
@@ -140,7 +187,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                 <Label htmlFor="description">Description *</Label>
                 <Textarea
                   id="description"
-                  placeholder="What did you spend on?"
+                  placeholder={transactionType === 'income' ? 'What is this income for?' : 'What did you spend on?'}
                   value={formData.description}
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   className="resize-none"
@@ -149,31 +196,35 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(categories || cacheStore.getCategories()).map(category => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {transactionType === 'expense' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category *</Label>
+                    <Select value={formData.category} onValueChange={(value) => handleInputChange('category', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(availableCategories).map(category => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-                <div className="space-y-2">
-                  <Label htmlFor="subcategory">Subcategory *</Label>
+                <div className={transactionType === 'income' ? 'col-span-2' : 'space-y-2'}>
+                  <Label htmlFor="subcategory">
+                    {transactionType === 'income' ? 'Income Source *' : 'Subcategory *'}
+                  </Label>
                   <Select 
                     value={formData.subcategory} 
                     onValueChange={(value) => handleInputChange('subcategory', value)}
-                    disabled={!formData.category}
+                    disabled={transactionType === 'expense' && !formData.category}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select subcategory" />
+                      <SelectValue placeholder={transactionType === 'income' ? 'Select income source' : 'Select subcategory'} />
                     </SelectTrigger>
                     <SelectContent>
                       {selectedCategory?.subcategories.map(subcategory => (
@@ -190,7 +241,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                 <Label htmlFor="paymentMethod">Payment Method *</Label>
                 <Select value={formData.paymentMethod} onValueChange={(value) => handleInputChange('paymentMethod', value)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="How did you pay?" />
+                    <SelectValue placeholder={transactionType === 'income' ? 'How did you receive it?' : 'How did you pay?'} />
                   </SelectTrigger>
                   <SelectContent>
                     {cacheStore.getPaymentMethods().map(method => (
@@ -202,7 +253,7 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                 </Select>
               </div>
 
-              {selectedPaymentMethod?.type === 'credit' && (
+              {transactionType === 'expense' && selectedPaymentMethod?.type === 'credit' && (
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">
                     <strong>Credit Card Reminder:</strong> This expense will be due on the {selectedPaymentMethod.dueDate}th of next month.
@@ -221,10 +272,15 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
                 </Button>
                 <Button 
                   type="submit" 
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                  className={cn(
+                    "flex-1",
+                    transactionType === 'income'
+                      ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
+                      : "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                  )}
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Save Expense
+                  Save {transactionType === 'income' ? 'Income' : 'Expense'}
                 </Button>
               </div>
             </form>
@@ -235,4 +291,4 @@ const ExpenseForm = ({ onBack, onSave, categories }) => {
   );
 };
 
-export default ExpenseForm;
+export default TransactionForm;

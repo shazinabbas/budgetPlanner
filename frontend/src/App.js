@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import "./App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "./components/ui/toaster";
 import { useToast } from "./hooks/use-toast";
 import Dashboard from "./components/Dashboard";
-import ExpenseForm from "./components/ExpenseForm";
-import IncomeForm from "./components/IncomeForm";
+import TransactionForm from "./components/TransactionForm";
 import Reports from "./components/Reports";
 import TransactionList from "./components/TransactionList";
+import Settings from "./components/Settings";
 import { cacheStore } from "./services/cache";
+import { addTransaction, updateTransaction, deleteTransaction, bulkAddTransactions, updateSettings } from "./services/syncService";
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard');
@@ -32,45 +32,38 @@ function App() {
     };
   }, []);
 
-  const handleAddExpense = (expenseData) => {
-    cacheStore.addExpense(expenseData);
+  const handleAddExpense = async (expenseData) => {
+    await addTransaction(expenseData);
     setCurrentView('dashboard');
+    const isIncome = expenseData.category === 'income';
     toast({
-      title: "Expense Added Successfully!",
+      title: `${isIncome ? 'Income' : 'Expense'} Added Successfully!`,
       description: `Added ${expenseData.description} for ₹${expenseData.amount.toLocaleString('en-IN')}`,
     });
   };
 
-  const handleUpdateExpense = (expenseId, updateData) => {
-    cacheStore.updateExpense(expenseId, updateData);
+  const handleUpdateExpense = async (expenseId, updateData) => {
+    await updateTransaction(expenseId, updateData);
   };
 
-  const handleDeleteExpense = (expenseId) => {
-    cacheStore.deleteExpense(expenseId);
+  const handleDeleteExpense = async (expenseId) => {
+    await deleteTransaction(expenseId);
   };
 
-  const handleBulkImport = (transactions) => {
-    cacheStore.addExpenses(transactions);
+  const handleBulkImport = async (transactions) => {
+    await bulkAddTransactions(transactions);
   };
 
-  const handleBulkCreate = (transactions) => {
-    cacheStore.addExpenses(transactions);
+  const handleBulkCreate = async (transactions) => {
+    await bulkAddTransactions(transactions);
     toast({
       title: "Bulk Create Successful!",
       description: `Created ${transactions.length} transaction(s) successfully.`,
     });
   };
 
-  const handleCategoriesUpdate = (newCategories) => {
-    cacheStore.updateCategories(newCategories);
-  };
-
-  const handleAddIncome = () => {
-    setCurrentView('add-income');
-  };
-
-  const handleSaveIncome = (incomeData) => {
-    setCurrentView('dashboard');
+  const handleCategoriesUpdate = async (newCategories) => {
+    await updateSettings('categories', newCategories);
   };
 
   const renderCurrentView = () => {
@@ -79,16 +72,16 @@ function App() {
         return (
           <Dashboard 
             onAddExpense={() => setCurrentView('add-expense')}
-            onAddIncome={handleAddIncome}
             onViewReports={() => setCurrentView('reports')}
             onViewTransactions={() => setCurrentView('transactions')}
+            onSettings={() => setCurrentView('settings')}
             expenses={expenses}
             categories={categories}
           />
         );
       case 'add-expense':
         return (
-          <ExpenseForm 
+          <TransactionForm 
             onBack={() => setCurrentView('dashboard')}
             onSave={handleAddExpense}
             categories={categories}
@@ -116,20 +109,20 @@ function App() {
             onBack={() => setCurrentView('dashboard')}
           />
         );
-      case 'add-income':
+      case 'settings':
         return (
-          <IncomeForm 
+          <Settings
             onBack={() => setCurrentView('dashboard')}
-            onSave={handleSaveIncome}
+            onUpdate={handleCategoriesUpdate}
           />
         );
       default:
         return (
           <Dashboard 
             onAddExpense={() => setCurrentView('add-expense')}
-            onAddIncome={handleAddIncome}
             onViewReports={() => setCurrentView('reports')}
             onViewTransactions={() => setCurrentView('transactions')}
+            onSettings={() => setCurrentView('settings')}
             expenses={expenses}
             categories={categories}
           />
@@ -139,11 +132,7 @@ function App() {
 
   return (
     <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/*" element={renderCurrentView()} />
-        </Routes>
-      </BrowserRouter>
+      {renderCurrentView()}
       <Toaster />
     </div>
   );

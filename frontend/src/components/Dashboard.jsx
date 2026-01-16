@@ -4,33 +4,36 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Progress } from './ui/progress';
-import { Plus, TrendingUp, TrendingDown, Wallet, Target, PieChart } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Wallet, Target, PieChart, Settings } from 'lucide-react';
 import { cacheStore } from '../services/cache';
 
-const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransactions, expenses, categories }) => {
-  const [income, setIncome] = useState(null);
+const Dashboard = ({ onAddExpense, onViewReports, onViewTransactions, onSettings, expenses, categories }) => {
   const [budgetData, setBudgetData] = useState({});
 
   useEffect(() => {
-    // Load income data and calculate budget
-    setIncome(cacheStore.getIncome());
+    // Calculate budget when expenses change
     calculateBudgetData();
   }, [expenses]);
 
   const calculateBudgetData = () => {
     const currentExpenses = expenses || [];
-    const totalExpenses = currentExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    const income = cacheStore.getIncome();
-    const totalIncome = income.amount || 0;
+    
+    // Separate income and expenses
+    const incomeTransactions = currentExpenses.filter(e => e.category === 'income');
+    const expenseTransactions = currentExpenses.filter(e => e.category !== 'income');
+    
+    const totalIncome = incomeTransactions.reduce((sum, expense) => sum + expense.amount, 0);
+    const totalExpenses = expenseTransactions.reduce((sum, expense) => sum + expense.amount, 0);
+    const netSavings = totalIncome - totalExpenses;
+    
     const budgetLimits = cacheStore.getBudgetLimits();
     const savingsGoal = budgetLimits.savings_goal || 0;
-    const remainingBudget = totalIncome - totalExpenses;
-    const savingsProgress = savingsGoal > 0 ? (remainingBudget / savingsGoal) * 100 : 0;
+    const savingsProgress = savingsGoal > 0 ? (netSavings / savingsGoal) * 100 : 0;
     
     setBudgetData({
       totalExpenses,
       totalIncome,
-      remainingBudget,
+      netSavings,
       savingsProgress: Math.min(savingsProgress, 100)
     });
   };
@@ -38,7 +41,7 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
   const getCategoryExpenses = (categoryId) => {
     const currentExpenses = expenses || [];
     return currentExpenses
-      .filter(expense => expense.category === categoryId)
+      .filter(expense => expense.category === categoryId && categoryId !== 'income')
       .reduce((sum, expense) => sum + expense.amount, 0);
   };
 
@@ -61,19 +64,20 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
           </div>
           <div className="flex gap-2">
             <Button 
-              onClick={onAddIncome}
+              onClick={onSettings}
               variant="outline" 
-              className="flex items-center gap-2 hover:bg-green-50 border-green-200 text-green-700"
+              size="icon"
+              className="hover:bg-slate-100"
+              title="Settings"
             >
-              <Plus className="w-4 h-4" />
-              Add Income
+              <Settings className="w-4 h-4" />
             </Button>
             <Button 
               onClick={onAddExpense}
               className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
             >
               <Plus className="w-4 h-4" />
-              Add Expense
+              Add Transaction
             </Button>
           </div>
         </div>
@@ -108,14 +112,16 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
 
           <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-blue-800">Remaining Budget</CardTitle>
+              <CardTitle className="text-sm font-medium text-blue-800">Net Savings</CardTitle>
               <Wallet className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-900">
-                {formatCurrency(budgetData.remainingBudget || 0)}
+              <div className={`text-2xl font-bold ${(budgetData.netSavings || 0) >= 0 ? 'text-blue-900' : 'text-rose-700'}`}>
+                {formatCurrency(budgetData.netSavings || 0)}
               </div>
-              <p className="text-xs text-blue-700 mt-1">Available to spend</p>
+              <p className="text-xs text-blue-700 mt-1">
+                {(budgetData.netSavings || 0) >= 0 ? 'Surplus this month' : 'Deficit this month'}
+              </p>
             </CardContent>
           </Card>
 
@@ -152,7 +158,7 @@ const Dashboard = ({ onAddExpense, onAddIncome, onViewReports, onViewTransaction
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {Object.values(categories || {}).map(category => {
+              {Object.values(categories || {}).filter(cat => cat.id !== 'income').map(category => {
                 const categoryTotal = getCategoryExpenses(category.id);
                 const categoryBudget = category.subcategories.reduce((sum, sub) => sum + sub.budgetLimit, 0);
                 const percentage = categoryBudget > 0 ? (categoryTotal / categoryBudget) * 100 : 0;
